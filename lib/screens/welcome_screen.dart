@@ -1,5 +1,9 @@
+import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:chat_app_class/components/main_btn.dart';
+import 'package:chat_app_class/screens/chat_screen.dart';
 import 'package:chat_app_class/screens/login_screen.dart';
+import 'package:chat_app_class/screens/registration_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -15,6 +19,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late Animation animation;
   @override
   void initState() {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        Navigator.pushNamedAndRemoveUntil(context, ChatScreen.id, (_) => false);
+      }
+    });
     controller = AnimationController(vsync: this, duration: duration);
 
     controller.forward();
@@ -53,13 +62,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     height: controller.value * 100,
                   ),
                 ),
-                Text(
-                  'Chat App',
-                  style: TextStyle(
-                    fontSize: 45.0,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                AnimatedTextKit(
+                    totalRepeatCount: 4,
+                    pause: const Duration(milliseconds: 500),
+                    displayFullTextOnTap: true,
+                    stopPauseOnTap: true,
+                    animatedTexts: [
+                      TypewriterAnimatedText(
+                        speed: const Duration(milliseconds: 300),
+                        'Chat App',
+                        textStyle: TextStyle(
+                          fontSize: 45.0,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ]),
               ],
             ),
             SizedBox(
@@ -75,7 +92,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             MainBtn(
               color: Colors.blueAccent,
               text: 'Register',
-              onPressed: () {},
+              onPressed: () {
+                Navigator.pushNamed(context, RegistrationScreen.id);
+              },
             ),
           ],
         ),
