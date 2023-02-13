@@ -17,13 +17,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   void getLoginState() {
-    FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      if (user == null) {
-        print('User is currently signed out!');
-      } else {
-        print('User is signed in!');
-      }
-    });
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {});
   }
 
   @override
