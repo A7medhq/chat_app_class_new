@@ -219,192 +219,202 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              messages == null
+              messages == null && onlineUsers == null
                   ? const Text('')
                   : Expanded(
                       child: StreamBuilder(
                         stream:
                             _firestore.collection('online_users').snapshots(),
                         builder: (context, snapshot1) {
-                          dynamic onlineUsers = snapshot1.data!.docs;
-                          return StreamBuilder(
-                              stream: _firestore
-                                  .collection('messages')
-                                  .orderBy('dateTime', descending: true)
-                                  .snapshots(),
-                              builder: (context, snapshot2) {
-                                if (snapshot2.hasData) {
-                                  dynamic messages = snapshot2.data!.docs;
-                                  return ListView.builder(
-                                    reverse: true,
-                                    itemCount: messages.length,
-                                    itemBuilder:
-                                        (BuildContext context, int index) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 6, horizontal: 12),
-                                        child: Column(
-                                          children: [
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              child: Directionality(
-                                                textDirection: messages[index]
-                                                            ['sender'] ==
-                                                        currentUserEmail
-                                                    ? TextDirection.ltr
-                                                    : TextDirection.rtl,
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.end,
-                                                  children: [
-                                                    onlineUsers
-                                                                .where((v) =>
-                                                                    v['user']
-                                                                        .toString() ==
-                                                                    messages[index]
-                                                                            [
-                                                                            'sender']
-                                                                        .toString())
-                                                                .length >
-                                                            0
-                                                        ? Container(
-                                                            width: 7,
-                                                            height: 7,
-                                                            decoration:
-                                                                const BoxDecoration(
-                                                              color:
-                                                                  Colors.green,
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                          )
-                                                        : Container(
-                                                            width: 7,
-                                                            height: 7,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: Colors.grey
-                                                                  .shade300,
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                          ),
-                                                    const SizedBox(
-                                                      width: 10,
-                                                    ),
-                                                    Text(
-                                                      messages[index]['sender']
-                                                          .toString()
-                                                          .split('@')
-                                                          .first,
-                                                      style: const TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors.blue),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment: messages[index]
-                                                          ['sender'] ==
-                                                      currentUserEmail
-                                                  ? Alignment.topRight
-                                                  : Alignment.topLeft,
-                                              child: Container(
-                                                constraints: BoxConstraints(
-                                                    maxWidth:
-                                                        MediaQuery.of(context)
-                                                                .size
-                                                                .width *
-                                                            0.4),
-                                                decoration: BoxDecoration(
-                                                  borderRadius: BorderRadius.only(
-                                                      topLeft:
-                                                          const Radius.circular(
-                                                              20),
-                                                      topRight:
-                                                          const Radius.circular(
-                                                              20),
-                                                      bottomLeft: messages[index]
-                                                                  ['sender'] ==
-                                                              currentUserEmail
-                                                          ? const Radius
-                                                              .circular(20)
-                                                          : const Radius
-                                                              .circular(0),
-                                                      bottomRight: messages[index]
-                                                                  ['sender'] ==
-                                                              currentUserEmail
-                                                          ? const Radius.circular(0)
-                                                          : const Radius.circular(20)),
-                                                  color: messages[index]
+                          if (snapshot1.hasData) {
+                            dynamic onlineUsers = snapshot1.data!.docs;
+                            return StreamBuilder(
+                                stream: _firestore
+                                    .collection('messages')
+                                    .orderBy('dateTime', descending: true)
+                                    .snapshots(),
+                                builder: (context, snapshot2) {
+                                  if (snapshot2.hasData) {
+                                    dynamic messages = snapshot2.data!.docs;
+                                    return ListView.builder(
+                                      reverse: true,
+                                      itemCount: messages.length,
+                                      itemBuilder:
+                                          (BuildContext context, int index) {
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 6, horizontal: 12),
+                                          child: Column(
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: Directionality(
+                                                  textDirection: messages[index]
                                                               ['sender'] ==
                                                           currentUserEmail
-                                                      ? const Color(0xFF1B97F3)
-                                                      : const Color(0xFF9CA1A2),
-                                                ),
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(8.0),
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        messages[index][
-                                                                    'sender'] ==
-                                                                currentUserEmail
-                                                            ? CrossAxisAlignment
-                                                                .end
-                                                            : CrossAxisAlignment
-                                                                .start,
+                                                      ? TextDirection.ltr
+                                                      : TextDirection.rtl,
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.end,
                                                     children: [
+                                                      onlineUsers
+                                                                  .where((v) =>
+                                                                      v['user']
+                                                                          .toString() ==
+                                                                      messages[index]
+                                                                              [
+                                                                              'sender']
+                                                                          .toString())
+                                                                  .length >
+                                                              0
+                                                          ? Container(
+                                                              width: 7,
+                                                              height: 7,
+                                                              decoration:
+                                                                  const BoxDecoration(
+                                                                color: Colors
+                                                                    .green,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                            )
+                                                          : Container(
+                                                              width: 7,
+                                                              height: 7,
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade300,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                            ),
                                                       const SizedBox(
-                                                        height: 5,
+                                                        width: 10,
                                                       ),
                                                       Text(
-                                                        messages[index]['text'],
+                                                        messages[index]
+                                                                ['sender']
+                                                            .toString()
+                                                            .split('@')
+                                                            .first,
                                                         style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 16),
+                                                            fontSize: 11,
+                                                            color: Colors.blue),
                                                       ),
-                                                      const SizedBox(
-                                                        height: 5,
-                                                      ),
-                                                      Align(
-                                                        alignment: Alignment
-                                                            .bottomRight,
-                                                        child: Text(
-                                                          INTL.DateFormat(
-                                                                  'h:mm a')
-                                                              .format(DateTime.fromMicrosecondsSinceEpoch(
-                                                                  messages[index]
-                                                                          [
-                                                                          'dateTime']
-                                                                      .microsecondsSinceEpoch))
-                                                              .toString(),
-                                                          style: TextStyle(
-                                                              fontSize: 11,
-                                                              color: Colors
-                                                                  .white
-                                                                  .withAlpha(
-                                                                      120)),
-                                                        ),
-                                                      )
                                                     ],
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  );
-                                } else {
-                                  return const Center(
-                                      child: CircularProgressIndicator());
-                                }
-                              });
+                                              Align(
+                                                alignment: messages[index]
+                                                            ['sender'] ==
+                                                        currentUserEmail
+                                                    ? Alignment.topRight
+                                                    : Alignment.topLeft,
+                                                child: Container(
+                                                  constraints: BoxConstraints(
+                                                      maxWidth:
+                                                          MediaQuery.of(context)
+                                                                  .size
+                                                                  .width *
+                                                              0.4),
+                                                  decoration: BoxDecoration(
+                                                    borderRadius: BorderRadius.only(
+                                                        topLeft: const Radius
+                                                            .circular(20),
+                                                        topRight:
+                                                            const Radius.circular(
+                                                                20),
+                                                        bottomLeft: messages[index][
+                                                                    'sender'] ==
+                                                                currentUserEmail
+                                                            ? const Radius.circular(
+                                                                20)
+                                                            : const Radius
+                                                                .circular(0),
+                                                        bottomRight: messages[index]
+                                                                    ['sender'] ==
+                                                                currentUserEmail
+                                                            ? const Radius.circular(0)
+                                                            : const Radius.circular(20)),
+                                                    color: messages[index]
+                                                                ['sender'] ==
+                                                            currentUserEmail
+                                                        ? const Color(
+                                                            0xFF1B97F3)
+                                                        : const Color(
+                                                            0xFF9CA1A2),
+                                                  ),
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            8.0),
+                                                    child: Column(
+                                                      crossAxisAlignment: messages[
+                                                                      index]
+                                                                  ['sender'] ==
+                                                              currentUserEmail
+                                                          ? CrossAxisAlignment
+                                                              .end
+                                                          : CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        const SizedBox(
+                                                          height: 5,
+                                                        ),
+                                                        Text(
+                                                          messages[index]
+                                                              ['text'],
+                                                          style:
+                                                              const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 16),
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 5,
+                                                        ),
+                                                        Align(
+                                                          alignment: Alignment
+                                                              .bottomRight,
+                                                          child: Text(
+                                                            INTL.DateFormat(
+                                                                    'h:mm a')
+                                                                .format(DateTime.fromMicrosecondsSinceEpoch(
+                                                                    messages[index]
+                                                                            [
+                                                                            'dateTime']
+                                                                        .microsecondsSinceEpoch))
+                                                                .toString(),
+                                                            style: TextStyle(
+                                                                fontSize: 11,
+                                                                color: Colors
+                                                                    .white
+                                                                    .withAlpha(
+                                                                        120)),
+                                                          ),
+                                                        )
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  } else {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  }
+                                });
+                          }
+                          return SizedBox();
                         },
                       ),
                     ),
