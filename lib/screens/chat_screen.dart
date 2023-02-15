@@ -13,7 +13,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:googleapis_auth/auth.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as INTL;
 
 import '../constants.dart';
 import 'notifications_screen.dart';
@@ -27,23 +27,27 @@ class ChatScreen extends StatefulWidget {
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   DateTime? currentBackPressTime;
   TextEditingController controller = TextEditingController();
   dynamic messages;
+  dynamic onlineUsers;
   String? currentUserEmail;
   Timer? _timer;
   String? typingId;
+
   List<RemoteNotification?> notifications = [];
   String token = '';
+
+  AppLifecycleState? _appStatus;
+  String? statusId;
 
   void getCurrentUser() {
     final currentUser = _auth.currentUser!;
     currentUserEmail = currentUser.email;
-    print(currentUserEmail);
   }
 
   void getMessages() async {
@@ -54,6 +58,11 @@ class _ChatScreenState extends State<ChatScreen> {
           descending: true,
         )
         .get();
+    setState(() {});
+  }
+
+  void getOnlineUsers() async {
+    onlineUsers = await _firestore.collection('online_users').get();
     setState(() {});
   }
 
@@ -82,14 +91,12 @@ class _ChatScreenState extends State<ChatScreen> {
             "notification": {"title": title, "body": body},
           }
         }));
-    print(response.body);
   }
 
   Future<AccessToken> getAccessToken() async {
     final serviceAccount = await rootBundle.loadString(
         'assets/alaqsa-exams-firebase-adminsdk-eoyiv-df02094234.json');
     final data = await jsonDecode(serviceAccount);
-    print(data);
     final accountCredentials = ServiceAccountCredentials.fromJson({
       "private_key_id": data['private_key_id'],
       "private_key": data['private_key'],
@@ -105,20 +112,59 @@ class _ChatScreenState extends State<ChatScreen> {
     return authClient.credentials.accessToken;
   }
 
+  void makeUserStatusOnline() async {
+    if (currentUserEmail != null) {
+      statusId = await _firestore.collection('online_users').add(
+          {'user': currentUserEmail, 'status': true}).then((value) => value.id);
+    }
+  }
+
+  void makeUserStatusOffline() async {
+    if (statusId != null) {
+      await _firestore.collection('online_users').doc(statusId).delete();
+      statusId = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        makeUserStatusOnline();
+        break;
+      case AppLifecycleState.inactive:
+        makeUserStatusOffline();
+        break;
+      case AppLifecycleState.paused:
+        makeUserStatusOffline();
+        break;
+      case AppLifecycleState.detached:
+        makeUserStatusOffline();
+        break;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
+
     getCurrentUser();
     getAccessToken().then((value) => token = value.data);
 
     getNotifications();
     SchedulerBinding.instance.addPostFrameCallback((_) {
       getMessages();
+      getOnlineUsers();
     });
+    makeUserStatusOnline();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
     controller.dispose();
     super.dispose();
   }
@@ -142,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                     child: Stack(
                       children: [
-                        Center(child: const Icon(Icons.notifications)),
+                        const Center(child: Icon(Icons.notifications)),
                         Container(
                           margin: const EdgeInsets.all(10),
                           padding: const EdgeInsets.symmetric(
@@ -177,134 +223,190 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? const Text('')
                   : Expanded(
                       child: StreamBuilder(
-                          stream: _firestore
-                              .collection('messages')
-                              .orderBy('dateTime', descending: true)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              dynamic messages = snapshot.data!.docs;
-                              return ListView.builder(
-                                reverse: true,
-                                itemCount: messages.length,
-                                itemBuilder: (BuildContext context, int index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 6, horizontal: 12),
-                                    child: Column(
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Align(
-                                            alignment: messages[index]
-                                                        ['sender'] ==
-                                                    currentUserEmail
-                                                ? Alignment.topRight
-                                                : Alignment.topLeft,
-                                            child: Text(
-                                              messages[index]['sender']
-                                                  .toString()
-                                                  .split('@')
-                                                  .first,
-                                              style: const TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.blue),
-                                            ),
-                                          ),
-                                        ),
-                                        Align(
-                                          alignment: messages[index]
-                                                      ['sender'] ==
-                                                  currentUserEmail
-                                              ? Alignment.topRight
-                                              : Alignment.topLeft,
-                                          child: Container(
-                                            constraints: BoxConstraints(
-                                                maxWidth: MediaQuery.of(context)
-                                                        .size
-                                                        .width *
-                                                    0.4),
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.only(
-                                                  topLeft:
-                                                      const Radius.circular(20),
-                                                  topRight:
-                                                      const Radius.circular(20),
-                                                  bottomLeft: messages[index]
-                                                              ['sender'] ==
-                                                          currentUserEmail
-                                                      ? const Radius.circular(
-                                                          20)
-                                                      : const Radius.circular(
-                                                          0),
-                                                  bottomRight: messages[index]
-                                                              ['sender'] ==
-                                                          currentUserEmail
-                                                      ? const Radius.circular(0)
-                                                      : const Radius.circular(
-                                                          20)),
-                                              color: messages[index]
-                                                          ['sender'] ==
-                                                      currentUserEmail
-                                                  ? const Color(0xFF1B97F3)
-                                                  : const Color(0xFF9CA1A2),
-                                            ),
-                                            child: Padding(
+                        stream:
+                            _firestore.collection('online_users').snapshots(),
+                        builder: (context, snapshot1) {
+                          dynamic onlineUsers = snapshot1.data!.docs;
+                          return StreamBuilder(
+                              stream: _firestore
+                                  .collection('messages')
+                                  .orderBy('dateTime', descending: true)
+                                  .snapshots(),
+                              builder: (context, snapshot2) {
+                                if (snapshot2.hasData) {
+                                  dynamic messages = snapshot2.data!.docs;
+                                  return ListView.builder(
+                                    reverse: true,
+                                    itemCount: messages.length,
+                                    itemBuilder:
+                                        (BuildContext context, int index) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6, horizontal: 12),
+                                        child: Column(
+                                          children: [
+                                            Padding(
                                               padding:
                                                   const EdgeInsets.all(8.0),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    messages[index]['sender'] ==
-                                                            currentUserEmail
-                                                        ? CrossAxisAlignment.end
-                                                        : CrossAxisAlignment
-                                                            .start,
-                                                children: [
-                                                  const SizedBox(
-                                                    height: 5,
-                                                  ),
-                                                  Text(
-                                                    messages[index]['text'],
-                                                    style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 16),
-                                                  ),
-                                                  const SizedBox(
-                                                    height: 5,
-                                                  ),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.bottomRight,
-                                                    child: Text(
-                                                      DateFormat('h:mm a')
-                                                          .format(DateTime
-                                                              .fromMicrosecondsSinceEpoch(
+                                              child: Directionality(
+                                                textDirection: messages[index]
+                                                            ['sender'] ==
+                                                        currentUserEmail
+                                                    ? TextDirection.ltr
+                                                    : TextDirection.rtl,
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.end,
+                                                  children: [
+                                                    onlineUsers
+                                                                .where((v) =>
+                                                                    v['user']
+                                                                        .toString() ==
+                                                                    messages[index]
+                                                                            [
+                                                                            'sender']
+                                                                        .toString())
+                                                                .length >
+                                                            0
+                                                        ? Container(
+                                                            width: 7,
+                                                            height: 7,
+                                                            decoration:
+                                                                const BoxDecoration(
+                                                              color:
+                                                                  Colors.green,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                          )
+                                                        : Container(
+                                                            width: 7,
+                                                            height: 7,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: Colors.grey
+                                                                  .shade300,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                          ),
+                                                    const SizedBox(
+                                                      width: 10,
+                                                    ),
+                                                    Text(
+                                                      messages[index]['sender']
+                                                          .toString()
+                                                          .split('@')
+                                                          .first,
+                                                      style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.blue),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Align(
+                                              alignment: messages[index]
+                                                          ['sender'] ==
+                                                      currentUserEmail
+                                                  ? Alignment.topRight
+                                                  : Alignment.topLeft,
+                                              child: Container(
+                                                constraints: BoxConstraints(
+                                                    maxWidth:
+                                                        MediaQuery.of(context)
+                                                                .size
+                                                                .width *
+                                                            0.4),
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.only(
+                                                      topLeft:
+                                                          const Radius.circular(
+                                                              20),
+                                                      topRight:
+                                                          const Radius.circular(
+                                                              20),
+                                                      bottomLeft: messages[index]
+                                                                  ['sender'] ==
+                                                              currentUserEmail
+                                                          ? const Radius
+                                                              .circular(20)
+                                                          : const Radius
+                                                              .circular(0),
+                                                      bottomRight: messages[index]
+                                                                  ['sender'] ==
+                                                              currentUserEmail
+                                                          ? const Radius.circular(0)
+                                                          : const Radius.circular(20)),
+                                                  color: messages[index]
+                                                              ['sender'] ==
+                                                          currentUserEmail
+                                                      ? const Color(0xFF1B97F3)
+                                                      : const Color(0xFF9CA1A2),
+                                                ),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(8.0),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        messages[index][
+                                                                    'sender'] ==
+                                                                currentUserEmail
+                                                            ? CrossAxisAlignment
+                                                                .end
+                                                            : CrossAxisAlignment
+                                                                .start,
+                                                    children: [
+                                                      const SizedBox(
+                                                        height: 5,
+                                                      ),
+                                                      Text(
+                                                        messages[index]['text'],
+                                                        style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 16),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 5,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .bottomRight,
+                                                        child: Text(
+                                                          INTL.DateFormat(
+                                                                  'h:mm a')
+                                                              .format(DateTime.fromMicrosecondsSinceEpoch(
                                                                   messages[index]
                                                                           [
                                                                           'dateTime']
                                                                       .microsecondsSinceEpoch))
-                                                          .toString(),
-                                                      style: TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors.white
-                                                              .withAlpha(120)),
-                                                    ),
-                                                  )
-                                                ],
+                                                              .toString(),
+                                                          style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors
+                                                                  .white
+                                                                  .withAlpha(
+                                                                      120)),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      );
+                                    },
                                   );
-                                },
-                              );
-                            } else {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-                          }),
+                                } else {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                }
+                              });
+                        },
+                      ),
                     ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -389,13 +491,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             sendNotification('Message from $currentUserEmail',
                                 controller.text);
                             controller.clear();
-                            if (typingId != null) {
-                              _firestore
-                                  .collection('typing_users')
-                                  .doc(typingId)
-                                  .delete();
-                              typingId = null;
-                            }
+
+                            Future.delayed(const Duration(seconds: 1), () {
+                              if (typingId != null) {
+                                _firestore
+                                    .collection('typing_users')
+                                    .doc(typingId)
+                                    .delete();
+                                typingId = null;
+                              }
+                            });
                           },
                           child: const Text(
                             'Send',
